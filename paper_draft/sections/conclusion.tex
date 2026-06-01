@@ -1,0 +1,6 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We tested whether newly specified graph geometries are verbally addressable from random-walk context. In a controlled benchmark with hidden 4x4 grids and 16-node rings, \gptfourone answered repeated edges reliably but did not recover unobserved true adjacencies. Direct prompting achieved 72.7\% overall accuracy, explicit reasoning achieved 73.9\%, and both remained below the 82.5\% observed-edge memorization baseline. On the decisive unobserved-positive slice, direct prompting scored 4/112 and explicit reasoning scored 0/112.
+
+The key takeaway is simple: in this setting, repeated novel geometries are addressable mainly when the relevant transition has already appeared in the prompt. Future work should test GPT-5-class and open-weight models, add directed move labels for coordinate probes, compare against explicit graph-reconstruction algorithms, and combine behavioral prompts with activation analyses on the same graph traces.

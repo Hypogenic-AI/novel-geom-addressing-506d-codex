@@ -1,0 +1,143 @@
+{
+  "puzzlevqa": {
+    "files": 20,
+    "records": 2000,
+    "per_file_minmax": [
+      100,
+      100
+    ]
+  },
+  "bongard_rwr": {
+    "problems": 60,
+    "sample_problem_ids": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10"
+    ]
+  },
+  "shape_blind": {
+    "csvs": {
+      "abstract_shapes.csv": {
+        "rows": 403,
+        "columns": [
+          "path",
+          "shape_type",
+          "background_color",
+          "shape_color",
+          "num_sides"
+        ]
+      },
+      "arrow_on_plus_with_visual_cues.csv": {
+        "rows": 1540,
+        "columns": [
+          "path",
+          "annotation_type",
+          "shape_color",
+          "background_color",
+          "size",
+          "prompt",
+          "shape"
+        ]
+      },
+      "heptagons_with_visual_cues.csv": {
+        "rows": 1400,
+        "columns": [
+          "annotation_type",
+          "shape_color",
+          "background_color",
+          "size",
+          "path",
+          "prompt",
+          "shape"
+        ]
+      },
+      "mathverse_revised.csv": {
+        "rows": 1290,
+        "columns": [
+          "sample_index",
+          "problem_index",
+          "problem_version",
+          "question",
+          "answer",
+          "question_type",
+          "metadata",
+          "query_wo",
+          "query_cot",
+          "question_for_eval",
+          "path",
+          "prompt",
+          "type"
+        ]
+      },
+      "regular_polygon_pairs.csv": {
+        "rows": 5090,
+        "columns": [
+          "background_color",
+          "shape1",
+          "color1",
+          "size1",
+          "rotation1",
+          "shape2",
+          "color2",
+          "size2",
+          "rotation2",
+          "path",
+          "ground_truth_shapes",
+          "prompt"
+        ]
+      },
+      "regular_polygons.csv": {
+        "rows": 1948,
+        "columns": [
+          "shape",
+          "background_color",
+          "shape_color",
+          "size",
+          "rotation",
+          "path"
+        ]
+      }
+    },
+    "png_images": 8911
+  },
+  "visual_spatial_reasoning": {
+    "random_split_counts": {
+      "train": 7680,
+      "dev": 1097,
+      "test": 2195
+    }
+  },
+  "visulogic": {
+    "records": 1000,
+    "images": 1000
+  },
+  "spatial_dise_csv": {
+    "csv_counts": {
+      "DISE-bench/DISE-benchmark.csv": 559,
+      "dataset/test.csv": 1854,
+      "dataset/train.csv": 8648,
+      "dataset/val.csv": 1853
+    },
+    "example_files": 10
+  },
+  "bongard_logo": {
+    "zip_file": "datasets/bongard_logo/bongard_logo_dataset.zip",
+    "entries": 408056,
+    "png_images": 168000,
+    "json_files": [
+      "ShapeBongard_V2/ShapeBongard_V2_split.json",
+      "ShapeBongard_V2/hd/hd_action_programs.json",
+      "ShapeBongard_V2/bd/bd_action_programs.json",
+      "ShapeBongard_V2/ff/ff_action_programs.json"
+    ],
+    "compressed_bytes": 1762748636,
+    "uncompressed_bytes": 2030241649
+  }
+}

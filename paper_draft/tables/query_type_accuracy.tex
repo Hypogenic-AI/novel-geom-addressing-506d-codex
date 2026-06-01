@@ -1,0 +1,16 @@
+\begin{table}[t]
+    \centering
+    \caption{Accuracy by query type. Best result in each column is in {\bf bold}. Low-seen true edges include unobserved positives and rare observed positives; the unobserved-only slice is analyzed separately in the text and in \figref{fig:unobserved_true}.}
+    \label{tab:query_type_accuracy}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        \textbf{Prompt or baseline} & \textbf{Observed true} & \textbf{Low-seen true} & \textbf{False distance-2} & \textbf{False distant} \\
+        \midrule
+        \directprompt & 0.988 & {\bf 0.306} & 0.650 & 0.963 \\
+        \reasonprompt & 0.988 & 0.256 & 0.738 & 0.975 \\
+        \observedbaseline & {\bf 1.000} & 0.300 & {\bf 1.000} & {\bf 1.000} \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table}

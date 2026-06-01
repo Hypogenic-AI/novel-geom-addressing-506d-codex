@@ -1,0 +1,23 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\para{Task definition.}
+We define a hidden graph $G=(V,E)$ with $|V|=16$. A bijection maps graph nodes to ordinary words, and the model observes a random walk $w_0,w_1,\ldots,w_L$ where each consecutive pair corresponds to an edge in $E$. After the trace, the model receives adjacency queries $(u,v)$ written as word pairs and must answer \texttt{YES} if the corresponding nodes are adjacent and \texttt{NO} otherwise. We call an edge observed when the unordered pair appears at least once in the random-walk trace.
+
+\para{Graph families and contexts.}
+We use two graph topologies: \gridgraph, a 4x4 square grid, and \ringgraph, a 16-node cycle. For each topology, we sample 8 random seeds. Each seed fixes the word-to-node assignment, the random walk, and the query bundle. We evaluate context lengths $L \in \{16,32,64,128,256\}$, roughly corresponding to 1, 2, 4, 8, and 16 visits per node on average. The full design contains 80 graph-context bundles per prompt style.
+
+\para{Queries.}
+Each bundle contains eight adjacency questions drawn from four query types. \emph{Observed true} queries are true graph edges that appeared in the trace. \emph{Low-seen true} queries are true graph edges with low observed counts, including many edges that never appeared. \emph{False distance-2} queries are non-edges whose shortest-path distance is two, and \emph{false distant} queries are non-edges farther away. This split distinguishes exact edge recovery from looser locality.
+
+\para{Prompt styles.}
+We test two prompts. \directprompt asks for JSON-only answers with no visible reasoning. \reasonprompt asks the model to reconstruct likely adjacencies before returning the same scored \texttt{YES}/\texttt{NO} labels. Both prompts are evaluated with the same ground truth and JSON parser.
+
+\para{Baselines.}
+We compare the model against three baselines. \randombase predicts a balanced binary decision and has 50\% expected accuracy. \alwaysnobase always predicts \texttt{NO}; because the bundles are balanced, it also scores 50\% overall, but it exposes class-bias effects. \observedbaseline predicts \texttt{YES} exactly when the queried edge was observed in the trace and \texttt{NO} otherwise. This is a strong non-geometric baseline: it rewards repeated transition memory but gives no credit for inferring unobserved edges.
+
+\para{Model and implementation.}
+We call \gptfourone through the OpenAI Chat Completions API with temperature 0, API seed 42, and JSON response format. Model availability was checked through the live OpenAI model list on June 1, 2026. The run produced 160 API calls and 1,280 scored query-level examples. Parsing succeeded for every response. Token use was 77,510 prompt tokens and 28,599 completion tokens, for 106,109 total tokens; cost was estimated from the official OpenAI API pricing page \cite{openai2026pricing}. The experiment used Python 3.12.8 with \texttt{openai 2.38.0}, \texttt{pandas 3.0.3}, \texttt{matplotlib 3.10.9}, \texttt{scipy 1.17.1}, and \texttt{seaborn 0.13.2}. The available machine had four NVIDIA RTX A6000 GPUs, but the experiment was API-bound and did not use GPU acceleration.
+
+\para{Metrics and statistics.}
+The primary metric is query-level accuracy. We report nonparametric 95\% bootstrap intervals for table cells and exact binomial tests against the 50\% random baseline. We compare paired predictions with exact McNemar tests, including model-vs-\observedbaseline comparisons within each graph/context cell and a direct-vs-reasoned prompt comparison across matched query bundles. We apply Holm correction for the family of random-baseline tests. Because eight queries are bundled within each trace, query-level examples are not fully independent; we therefore emphasize effect sizes, paired comparisons, and the unobserved-edge slice.

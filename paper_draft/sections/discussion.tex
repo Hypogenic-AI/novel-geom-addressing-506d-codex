@@ -1,0 +1,17 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\para{The model behaves like a repeated-transition memory.}
+The main result is not that \gptfourone cannot use graph traces at all. It clearly can: observed true edges are answered correctly 98.8\% of the time, and high-repetition contexts improve accuracy. The result is narrower and more diagnostic. When the queried positive edge has not appeared in the trace, prompt-accessible geometry mostly disappears. This pattern is better explained by local transition memory than by reliable reconstruction of the hidden grid or ring.
+
+\para{Near-neighbor errors suggest vague locality without exact edges.}
+False distant pairs are easy, with 96.3\% accuracy under \directprompt and 97.5\% under \reasonprompt. False distance-2 pairs are harder, with 65.0\% and 73.8\% accuracy respectively. This contrast suggests that the model may acquire a coarse notion that some words live in the same local region of the trace, while still failing to resolve exact adjacency. Such a representation would be useful for broad locality judgments but insufficient for graph addressability.
+
+\para{Reasoning is not a reliable interface here.}
+The explicit-reasoning prompt was meant to test whether terse JSON-only prompting hides an available structure. It did not. Reasoning slightly improves rejection of false distance-2 pairs but does not improve the central positive case, and it reduces unobserved true-edge accuracy to zero. This does not prove that internal geometric representations are absent. It shows that the tested reasoning prompt does not make those representations behaviorally available as exact adjacency answers.
+
+\para{Limitations.}
+This is a behavioral API study, not an activation analysis. It cannot decide whether \gptfourone internally formed a geometric representation that the prompt failed to access, or whether no such representation formed. We test one model family, while the motivating representation study analyzes other models. The random walks are unlabeled, so they identify adjacency but not absolute directions such as north or east. The bundled query design also means that the effective sample size is closer to the 80 graph-context bundles per prompt style than to 640 fully independent queries per prompt style.
+
+\para{Broader implications.}
+These results argue for separating in-context representation learning from prompt addressability. A model may store repeated local relations well enough to answer many questions, yet still fail when asked about relations implied by the whole structure. For applications that define temporary maps, workflows, databases, or symbolic worlds inside a prompt, this distinction matters: repeated evidence can look like understanding unless evaluation isolates unobserved but entailed relations.

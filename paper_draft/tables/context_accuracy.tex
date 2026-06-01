@@ -1,0 +1,19 @@
+\begin{table}[t]
+    \centering
+    \caption{Accuracy by prompt style, graph topology, and context length. Best result for each graph/context setting is in {\bf bold}; ties are both bold. The observed-edge baseline is deterministic and shared across prompt styles.}
+    \label{tab:context_accuracy}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}llccccc@{}}
+        \toprule
+        \textbf{Prompt} & \textbf{Graph} & \textbf{L=16} & \textbf{L=32} & \textbf{L=64} & \textbf{L=128} & \textbf{L=256} \\
+        \midrule
+        \directprompt & \gridgraph & 0.703 & 0.641 & 0.641 & 0.766 & 0.875 \\
+        \directprompt & \ringgraph & {\bf 0.750} & 0.703 & 0.672 & 0.672 & 0.844 \\
+        \reasonprompt & \gridgraph & 0.703 & 0.688 & 0.672 & 0.703 & 0.891 \\
+        \reasonprompt & \ringgraph & 0.734 & 0.719 & 0.672 & 0.703 & 0.906 \\
+        \observedbaseline & \gridgraph & {\bf 0.750} & {\bf 0.750} & {\bf 0.750} & {\bf 0.906} & {\bf 1.000} \\
+        \observedbaseline & \ringgraph & {\bf 0.750} & {\bf 0.750} & {\bf 0.781} & {\bf 0.828} & {\bf 0.984} \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table}

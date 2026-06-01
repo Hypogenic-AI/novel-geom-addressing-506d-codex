@@ -1,0 +1,10 @@
+{
+  "api_calls": 160,
+  "completion_tokens": 28599,
+  "observed_baseline_accuracy": 0.825,
+  "overall_accuracy": 0.7328125,
+  "parse_valid_rate": 1.0,
+  "prompt_tokens": 77510,
+  "rows": 1280,
+  "total_tokens": 106109
+}

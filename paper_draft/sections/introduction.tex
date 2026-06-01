@@ -1,0 +1,25 @@
+\section{Introduction}
+\label{sec:introduction}
+
+\para{Can a prompt expose a geometry learned only in context?}
+Language models are increasingly used as systems that define temporary worlds inside a prompt: names become entities, examples define relations, and users expect the model to answer questions about the induced structure. This expectation is stronger than next-token continuation. If a model internally organizes words around a new graph, a user still needs to know whether that graph can be queried in plain language.
+
+Recent work on in-context representation learning gives this question a concrete form. \citet{park2025iclr} study graph tracing tasks in which familiar words are assigned to nodes of grids, rings, and related structures, and random-walk traces specify local transitions. They report that model representations can reorganize around the context-specified geometry as context grows. This is a striking representation-level result, but it leaves a behavioral gap: an internal geometry can exist without being addressable by an ordinary adjacency question.
+
+\para{Our main question is behavioral.}
+We ask whether a current frontier language model can verbally address a newly specified graph geometry from random-walk context alone, especially when the relevant relation has not been repeated. The distinction matters because a high score on repeated edges can come from copying observed transitions rather than inferring the hidden topology. We therefore separate directly observed true edges from true edges that are sparse or absent in the trace.
+
+We introduce \taskname, a small but controlled prompt benchmark for this question. Each task assigns 16 ordinary words to either a 4x4 grid or a 16-node ring, samples a random-walk trace of length 16, 32, 64, 128, or 256, and asks eight bundled adjacency questions of the form \texttt{current=<word>, candidate=<word>}. We test \gptfourone with a direct JSON-only prompt and with an explicit-reasoning prompt that asks the model to reconstruct likely adjacencies before returning labels. We compare both prompts against \randombase, \alwaysnobase, and a strong \observedbaseline baseline that predicts \texttt{YES} only when the candidate edge appeared in the trace.
+
+\para{The result is negative for unobserved topology.}
+Across 1,280 scored query-level examples, direct prompting achieves 72.7\% accuracy and explicit reasoning achieves 73.9\%, both above the 50\% random baseline but below the 82.5\% \observedbaseline baseline. The model is excellent on observed true edges, answering 98.8\% correctly under both prompt styles. It fails on the key slice: among true adjacencies that never appeared in the trace, direct prompting recovers only 4/112 (3.6\%) and explicit reasoning recovers 0/112. \Figref{fig:accuracy_context} previews the repetition curve, and \figref{fig:unobserved_true} isolates the unobserved-positive failure.
+
+Our contributions are:
+\begin{itemize}
+    \item We propose \taskname, a behavioral probe for verbal addressability of in-context graph geometries.
+    \item We conduct a controlled \gptfourone evaluation over 2 graph families, 5 context lengths, 8 random seeds, 2 prompt styles, and 1,280 scored adjacency decisions.
+    \item We separate repeated-transition memory from topology inference by scoring observed true edges, low-seen true edges, distance-2 false pairs, and distant false pairs.
+    \item We show that explicit reasoning does not rescue the hard case: it improves some false-neighbor rejection but reduces unobserved true-edge accuracy from 3.6\% to 0.0\%.
+\end{itemize}
+
+\Secref{sec:related_work} positions the study relative to in-context representations and abstract visual reasoning. \Secref{sec:methodology} defines the graph tracing benchmark and baselines. \Secref{sec:results} reports the main results and ablations, and \secref{sec:discussion} discusses what this does and does not imply about internal representations.

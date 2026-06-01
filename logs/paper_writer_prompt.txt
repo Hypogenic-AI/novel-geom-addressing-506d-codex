@@ -1,0 +1,618 @@
+You are an academic paper writer. Generate a complete NEURIPS style paper
+based on the experiment results provided.
+
+════════════════════════════════════════════════════════════════════════════════
+                         IMPORTANT: BEFORE YOU START
+════════════════════════════════════════════════════════════════════════════════
+
+Before writing any content, you MUST complete these steps:
+
+1. READ THE SKILL: Review the paper-writer skill at .codex/skills/paper-writer/SKILL.md
+2. READ THE STYLE GUIDE: Study templates/paper_writing/lab_style_guide.md carefully
+3. REVIEW EXAMPLES: Browse paper_examples/ for formatting and language patterns:
+   - Look at sections/1.introduction.tex for language style
+   - Look at tables/*.tex for table formatting
+   - Look at commands/*.tex for macro usage
+4. VERIFY COMMAND TEMPLATES: Command templates (math.tex, general.tex, macros.tex) are pre-copied to paper_draft/commands/
+
+CRITICAL: Reference example papers for FORMATTING and LANGUAGE STYLE only.
+Do NOT copy content, phrasing, or narrative structure from the example papers.
+The examples are in a different research domain - focus only on presentation style.
+
+════════════════════════════════════════════════════════════════════════════════
+                            EXPERIMENT REPORT
+════════════════════════════════════════════════════════════════════════════════
+
+# Are Repeated Novel Geometries Addressable Without Reasoning?
+
+## 1. Executive Summary
+
+This study tested whether the in-context graph geometries studied by Park et al. in "ICLR: In-Context Learning of Representations" ([arXiv:2501.00070](https://arxiv.org/abs/2501.00070)) are verbally addressable through prompting. I generated hidden 4x4 grid and 16-node ring tasks where ordinary words were randomly assigned to graph nodes, supplied random-walk traces as context, and asked `gpt-4.1` to answer adjacency questions either directly with JSON only or with an explicit-reasoning prompt.
+
+The main finding is negative for sparse and non-repeated relations: `gpt-4.1` reliably addressed edges that were directly repeated in the prompt, but almost never recovered true graph adjacencies that were not observed in the trace. Direct no-reasoning accuracy was 72.7% overall, above random, but below the observed-edge memorization baseline of 82.5%. On truly unobserved positive edges, direct prompting scored 4/112 = 3.6%, and explicit reasoning scored 0/112.
+
+Practical implication: these in-context geometries are verbally addressable mainly as repeated transition memories. This experiment does not support the stronger claim that a model can expose a newly learned 2D topology through ordinary prompting when there is little repetition.
+
+## 2. Research Question & Motivation
+
+The user-provided motivation was: models appear to learn 2D geometries in context; can those geometries be addressed verbally through prompting, and what happens with limited repetition?
+
+The ICLR paper reports that, as context length increases, internal representations can reorganize around context-specified square-grid, ring, and hex-grid structures. That leaves a behavioral gap: internal geometric structure might exist without being accessible through a natural-language query. The pre-gathered visual-geometry review also emphasized that direct prompting often underperforms symbolic or repeated-example conditions, motivating a no-CoT repetition-curve test.
+
+## 3. Experimental Setup
+
+**Model tested:** `gpt-4.1` through the OpenAI Chat Completions API, temperature 0, API seed 42, JSON response format. Model availability was checked via the live OpenAI model list on 2026-06-01.
+
+**Task:** hidden graph tracing. Sixteen ordinary words were randomly assigned to nodes of either a 4x4 square grid or a 16-node ring. A random-walk trace exposed adjacent word transitions. The model then answered eight bundled adjacency questions: `current=<word>, candidate=<word>`, with YES/NO labels.
+
+**Design:** 2 graph types x 5 context lengths x 8 random seeds x 2 prompt styles x 8 queries = 1,280 scored query-level examples from 160 real API calls.
+
+**Context lengths:** 16, 32, 64, 128, and 256 transitions, corresponding roughly to 1, 2, 4, 8, and 16 visits per node on average.
+
+**Prompt styles:** direct no-reasoning JSON-only output, and an explicit-reasoning ablation that asked the model to reconstruct likely adjacencies before returning JSON.
+
+**Query types:** observed true edge, low-seen/unobserved true edge, false distance-2 pair, and distant false pair.
+
+**Baselines:** random choice at 50%; always-no; observed-edge memorization, which predicts YES only when the candidate edge appeared in the trace.
+
+**Compute and environment:** Python 3.12.8 in the project `.venv`; main libraries were `openai 2.38.0`, `pandas 3.0.3`, `matplotlib 3.10.9`, `scipy 1.17.1`, and `seaborn 0.13.2`. Four NVIDIA RTX A6000 GPUs were available, each with 49,140 MiB memory, but the experiment was API-bound and did not use GPU acceleration.
+
+**Token/cost tracking:** 77,510 prompt tokens and 28,599 completion tokens were used, for 106,109 total tokens. Using the official OpenAI pricing page as the cost reference ([OpenAI API pricing](https://platform.openai.com/docs/pricing)), the run was well under one dollar at current `gpt-4.1` rates.
+
+## 4. Results
+
+![Accuracy by context](figures/accuracy_by_context.png)
+
+| Prompt | Graph | L=16 | L=32 | L=64 | L=128 | L=256 |
+|---|---|---:|---:|---:|---:|---:|
+| Direct | grid4x4 | 0.703 | 0.641 | 0.641 | 0.766 | 0.875 |
+| Direct | ring16 | 0.750 | 0.703 | 0.672 | 0.672 | 0.844 |
+| Reasoned | grid4x4 | 0.703 | 0.688 | 0.672 | 0.703 | 0.891 |
+| Reasoned | ring16 | 0.734 | 0.719 | 0.672 | 0.703 | 0.906 |
+| Observed-edge baseline | grid4x4 | 0.750 | 0.750 | 0.750 | 0.906 | 1.000 |
+| Observed-edge baseline | ring16 | 0.750 | 0.750 | 0.781 | 0.828 | 0.984 |
+
+All graph/context cells were above the 50% random baseline after Holm correction, but the model never exceeded the observed-edge baseline. Paired McNemar tests showed the memorization baseline was significantly better in most medium/high repetition cells; no cell showed a significant model advantage over memorization.
+
+![Accuracy by query type](figures/accuracy_by_query_type.png)
+
+| Prompt | Observed true | Low-seen true | False distance-2 | False distant |
+|---|---:|---:|---:|---:|
+| Direct | 0.988 | 0.306 | 0.650 | 0.963 |
+| Reasoned | 0.988 | 0.256 | 0.738 | 0.975 |
+| Observed-edge baseline | 1.000 | 0.300 | 1.000 | 1.000 |
+
+The critical slice is low-seen true edges. When those edges had never appeared in the prompt, direct prompting got only 4/112 correct, and explicit reasoning got 0/112 correct.
+
+![Unobserved true edge accuracy](figures/unobserved_true_edge_accuracy.png)
+
+Raw outputs are in `results/model_outputs/`. Scored query-level data and statistics are in `results/evaluations/`.
+
+## 5. Analysis & Discussion
+
+The model is clearly using repeated local evidence. Observed true edges were almost perfectly addressable: 98.8% accuracy under both prompt styles. Edges seen at least twice were also nearly always answered YES in the low-seen category.
+
+The model did not infer hidden topology well from sparse traces. For unobserved true edges, the direct condition found only four positives across 112 cases, and the reasoned condition found none. This is the key result for the user's "what if there isn't that much repetition?" question: without repeated transition evidence, the prompt-accessible geometry largely disappears.
+
+Explicit reasoning did not rescue addressability. Overall accuracy rose only from 72.7% to 73.9%, and a paired direct-vs-reasoned comparison was not significant (McNemar p = 0.256). Reasoning improved some false distance-2 rejection but made unobserved positives worse.
+
+A notable failure mode was near-neighbor false positives. False distance-2 pairs were much harder than distant false pairs, especially at longer traces where the model sometimes treated graph-proximal words as adjacent. This suggests it may form a vague locality notion without reliably resolving exact edges.
+
+## 6. Limitations
+
+This was a behavioral API study, not an internal representation analysis. It cannot tell whether `gpt-4.1` internally formed a geometric representation that was inaccessible through the prompts, or whether no such representation formed.
+
+Only one frontier model was tested. The ICLR paper focused on Llama-family internal activations, so model-family differences remain open.
+
+The task evaluated adjacency because unlabeled random walks do not identify absolute north/south/east/west directions. Directional verbal addressability would require adding directed move labels or coordinate probes.
+
+Queries were bundled within traces, so query-level examples are not fully independent. The analysis reports bootstrap intervals and paired tests, but the effective sample size is closer to the 80 graph/context bundles per prompt style than to 640 independent queries.
+
+## 7. Conclusions & Next Steps
+
+Answer: repeated in-context geometries are verbally addressable when the relevant edge has appeared in the prompt, but this run found little evidence that `gpt-4.1` can verbally address unobserved parts of the induced 2D geometry without explicit or repeated support. Limited repetition produced above-random performance, but the gains were explained better by observed-edge memorization than by topology inference.
+
+Useful follow-up experiments would test GPT-5-class and open-weight models, add directed random-walk labels to probe coordinate addressability, compare against a graph-reconstruction algorithm, and reproduce the behavioral probes on the exact models from the ICLR representation study.
+
+## References
+
+- Park, C. F., Lee, A., Lubana, E. S., Yang, Y., Okawa, M., Nishi, K., Wattenberg, M., & Tanaka, H. (2025). ICLR: In-Context Learning of Representations. arXiv:2501.00070. https://arxiv.org/abs/2501.00070
+- Local gathered review: `literature_review.md`
+- Local resource catalog: `resources.md`
+- OpenAI API pricing reference: https://platform.openai.com/docs/pricing
+
+
+════════════════════════════════════════════════════════════════════════════════
+                            RESEARCH PLAN
+════════════════════════════════════════════════════════════════════════════════
+
+# Research Plan: Verbal Addressability of In-Context 2D Geometries
+
+## Motivation & Novelty Assessment
+
+### Why This Research Matters
+Park et al. (ICLR 2025; arXiv:2501.00070) show that language models can reorganize internal representations around a context-specified graph geometry when enough random-walk evidence is supplied. A practical follow-up is whether that learned geometry is externally addressable through ordinary prompts, because representation-level structure is less useful if users cannot query it reliably. This matters for prompt-based control, in-context world models, and settings where a model must use newly defined relations without fine-tuning.
+
+### Gap in Existing Work
+The user-linked ICLR paper measures next-token rule-following accuracy and internal representation geometry, not whether the model can verbally answer explicit graph-neighborhood questions after seeing the same kind of traces. The gathered visual-geometry literature similarly shows that models often benefit from repeated examples or symbolic representations, but it does not isolate sparse in-context graph traces, no-chain-of-thought prompting, and unobserved true edges.
+
+### Our Novel Contribution
+This experiment turns in-context graph tracing into a direct prompt evaluation. We vary context length, graph topology, and prompt style, then ask a real model to answer bundled adjacency questions with no visible reasoning. We separately score observed true edges and unobserved true edges to distinguish simple repetition/memorization from inferred geometric addressability.
+
+### Experiment Justification
+- Experiment 1: Direct no-reasoning adjacency queries across context lengths. This is the core test of whether context-learned geometry is verbally addressable without explicit reasoning.
+- Experiment 2: Explicit-reasoning ablation on the same query bundles. This tests whether failures are specific to terse prompting or persist even when the model is invited to reconstruct the graph.
+- Experiment 3: Baseline comparison against random choice and observed-edge memorization. This separates genuine geometric inference from copying transitions that already appeared in the prompt.
+
+## Research Question
+Can a current LLM verbally address a newly specified 2D or cyclic graph geometry from random-walk context alone, especially under limited repetition and without explicit reasoning traces?
+
+## Background and Motivation
+The ICLR paper "In-Context Learning of Representations" defines graph tracing: familiar words are randomly assigned to nodes of a square grid, ring, or hexagonal lattice, and a model receives random-walk traces over that graph. The paper reports that internal representations increasingly mirror the graph as context grows, with accuracy improving after enough context. The open question here is behavioral and user-facing: after sparse or dense traces, can the model answer plain-language adjacency questions about the induced geometry?
+
+The pre-gathered Bongard, Shape-Blind, PuzzleVQA, VSR, VisuLogic, and Spatial-DISE resources support the broader concern that repeated examples and symbolic descriptions can reveal geometric competence hidden by weak direct prompting. They motivate the same controls here: repetition curves, no-CoT prompts, explicit-reasoning ablations, and memorization baselines.
+
+## Hypothesis Decomposition
+- H1: Direct no-reasoning adjacency accuracy rises with trace length, because longer context provides more edge evidence.
+- H2: At low trace lengths, performance is close to an observed-edge memorization baseline and weak on unobserved true edges.
+- H3: If a verbal geometry is actually inferred, the model should answer some unobserved true-edge queries above the observed-edge baseline.
+- H4: Explicit reasoning should improve performance if failures are due to prompt surface form rather than unavailable internal structure.
+
+Independent variables:
+- Graph topology: 4x4 square grid and 16-node ring.
+- Context length: 16, 32, 64, 128, and 256 random-walk transitions.
+- Prompt style: direct JSON-only no-reasoning vs. explicit reasoning.
+- Query type: observed true edge, sparse or unobserved true edge, distance-2 false edge, random false edge.
+
+Dependent variables:
+- Binary adjacency accuracy.
+- Accuracy by query type and context length.
+- Gap from random and observed-edge memorization baselines.
+- Parsed response validity and API/token cost.
+
+## Proposed Methodology
+
+### Approach
+Generate synthetic graph-tracing tasks matching the structure of the ICLR paper: a fixed known topology with words randomly assigned to nodes and a random-walk context as evidence. Each API call contains one trace and a bundle of eight adjacency questions. The model returns JSON answers only in the direct condition; the explicit condition permits brief rationale fields but is scored on the same YES/NO labels.
+
+### Experimental Steps
+1. Generate square-grid and ring graphs with deterministic seeds, random word-to-node assignments, and random-walk traces.
+2. For each graph/context pair, construct balanced query bundles containing true and false candidate adjacencies.
+3. Run `gpt-4.1` via the real OpenAI API at temperature 0, caching raw prompts, responses, model IDs, timestamps, and token usage.
+4. Parse JSON responses and score each query against ground truth.
+5. Compute random and observed-edge memorization baselines from the trace.
+6. Analyze performance by context length, graph type, prompt style, and query type.
+7. Generate tables and figures for report documentation.
+
+### Baselines
+- Random: 50% expected accuracy on balanced yes/no adjacency decisions.
+- Always-no: useful because sparse bundles include hard unobserved positives.
+- Observed-edge memorization: predicts YES only if the candidate edge appeared in the trace; otherwise predicts NO. This is a strong non-geometric baseline for repetition-driven addressability.
+
+### Evaluation Metrics
+- Accuracy with 95% bootstrap confidence intervals.
+- Query-type accuracy, especially unobserved or low-count true edges.
+- McNemar/permutation-style paired comparisons where useful.
+- Cohen's h for differences in proportions.
+- Response parse-validity rate.
+
+### Statistical Analysis Plan
+Use bootstrap confidence intervals over query-level examples, grouped by graph seed when comparing context lengths. Use two-proportion z-tests or Fisher's exact tests for key contrasts, with Holm correction for multiple context-length comparisons. Treat query-level independence cautiously because queries are bundled within traces; report this as a limitation and prefer effect sizes plus grouped bootstrap intervals.
+
+## Expected Outcomes
+Results supporting verbal addressability would show direct no-reasoning accuracy above both random and observed-edge baselines, particularly on true edges not directly observed in the trace. Results refuting the hypothesis would show performance dominated by observed-edge copying and poor unobserved-edge accuracy, especially at low repetition.
+
+## Timeline and Milestones
+- Planning and setup: complete isolated environment, GPU/API checks, and this plan.
+- Implementation: create `src/generate_graph_tasks.py`, `src/run_openai_experiment.py`, and `src/analyze_results.py`.
+- Experimentation: run cached API calls for the selected graph/context/prompt matrix.
+- Analysis: compute metrics, figures, and error slices.
+- Documentation: write `REPORT.md`, update `README.md`, and validate reproducibility.
+
+## Potential Challenges
+- API output may contain malformed JSON; mitigation: use JSON response format, retry malformed outputs, and log parse failures.
+- The model may answer by observed transition copying; mitigation: score unobserved true edges separately and compare to the observed-edge baseline.
+- Context length may create prompt-size or latency issues; mitigation: use bundled queries and cap traces at 256 transitions for this run.
+- Directional geometry is not identifiable from unlabeled random walks; mitigation: evaluate adjacency, which is the identifiable graph property in the ICLR setup.
+
+## Success Criteria
+The research succeeds if it produces a reproducible benchmark, real model outputs, statistical analysis, and a report answering whether sparse in-context geometries can be verbally addressed without explicit reasoning. A negative result is successful if it clearly distinguishes failure from random variation and from simple memorization.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          LITERATURE REVIEW
+════════════════════════════════════════════════════════════════════════════════
+
+# Literature Review: Repeated Novel Geometries and Addressability Without Explicit Reasoning
+
+## Review Scope
+
+### Research Question
+Can models verbally address or classify repeated novel 2D geometries from prompts with limited repetition, without relying on explicit reasoning traces?
+
+### Inclusion Criteria
+- Benchmarks involving 2D geometric, abstract, or spatial visual concepts.
+- Work that separates visual perception/representation from language reasoning.
+- Evaluation of VLMs/MLLMs/LLMs on few-shot visual abstraction, shape recognition, or spatial relation tasks.
+- Datasets or code suitable for downstream automated experiments.
+
+### Exclusion Criteria
+- Purely text-only spatial reasoning without visual grounding, unless used as contrast.
+- General VQA benchmarks with weak control over geometry or abstract visual concepts.
+- Papers without accessible PDF or reproducible resources, unless they define an important benchmark taxonomy.
+
+### Time Frame and Sources
+Primary focus: 2020-2026. Sources: paper-finder attempt, arXiv, Hugging Face dataset cards, GitHub repositories, and project pages. The local paper-finder service did not return within a 45-second bounded call, so manual search was used.
+
+## Search Log
+
+| Date | Query | Source | Results | Notes |
+|------|-------|--------|---------|-------|
+| 2026-06-01 | novel 2D geometry visual language models spatial reasoning prompting | paper-finder | timed out | Service hung under bounded timeout |
+| 2026-06-01 | visual language models spatial reasoning geometry benchmark | paper-finder | timed out | Fell back to manual search |
+| 2026-06-01 | Bongard LOGO large language models visual reasoning | arXiv/web | 3 core papers | Bongard-LOGO, Bongard MLLM limitations, Symbolic Grounding |
+| 2026-06-01 | PuzzleVQA abstract visual patterns | arXiv/web | 1 dataset paper | Relevant controlled abstract pattern benchmark |
+| 2026-06-01 | MLLMs shape-blind polygons | arXiv/web | 1 paper + dataset | Directly relevant to geometry naming/counting |
+| 2026-06-01 | visual spatial reasoning benchmark VLM | arXiv/web | VSR, VisuLogic, Spatial-DISE | Useful secondary spatial baselines |
+
+## Key Papers
+
+### Bongard-LOGO: A New Benchmark for Human-Level Concept Learning and Reasoning
+- Authors: Nie et al.; Year: 2020/2021; Source: arXiv/NeurIPS. URL: https://arxiv.org/abs/2010.00763
+- Key Contribution: Introduces 12,000 procedurally generated Bongard problems over 2D shapes with ground-truth LOGO action programs.
+- Methodology: Positive and negative example panels define a latent concept; query images are classified as positive/negative. Concepts include free-form stroke programs, basic shape categories, and abstract attributes.
+- Datasets Used: New Bongard-LOGO dataset; 9,300 train, 900 validation, 1,800 test problems.
+- Results: Best model accuracies were around 66-73% on several splits, while expert humans exceeded 90% and reached about 99% on basic shapes.
+- Code Available: Yes, https://github.com/NVlabs/Bongard-LOGO
+- Relevance: The strongest base dataset for repeated novel 2D geometries. Its action programs make it possible to compare image-only prompts, symbolic descriptions, and explicit reasoning conditions.
+
+### Reasoning Limitations of Multimodal Large Language Models: A Case Study of Bongard Problems
+- Authors: Malkinski et al.; Year: 2024/2025; Source: arXiv/ICML. URL: https://arxiv.org/abs/2411.01173
+- Key Contribution: Tests proprietary and open MLLMs on classical synthetic Bongard problems and real-world Bongard variants.
+- Methodology: Direct image prompting, per-panel descriptive prompting, iterative prompting, and contrastive prompting; evaluates both free-form rule generation and binary classification.
+- Datasets Used: Classical synthetic BPs, Bongard-HOI, Bongard-OpenWorld, and new Bongard-RWR.
+- Results: Best generation score on synthetic BPs was only 22/100 across strategies. Descriptive prompting usually helped, but still fell far below human performance. On Bongard-RWR, humans averaged 65%, while models were much lower.
+- Code Available: Yes, https://github.com/pavonism/bongard-rwr
+- Relevance: Direct evidence that current MLLMs struggle to verbalize abstract geometry concepts even when the visual domain is simple or translated to real-world imagery.
+
+### Symbolic Grounding Reveals Representational Bottlenecks in Abstract Visual Reasoning
+- Authors: Vaishnav and Tammet; Year: 2026; Source: arXiv. URL: https://arxiv.org/abs/2604.21346
+- Key Contribution: Uses Bongard-LOGO action programs and natural-language action descriptions to test whether VLM failure is due to perception/representation or reasoning.
+- Methodology: Componential-Grammatical pipeline: replace pixels with ground-truth LOGO-style symbolic inputs, then ask LLMs to infer the rule and classify the query.
+- Datasets Used: Bongard-LOGO subset of 2,000 problems across FF, BD, HD-Comb, and HD-Novel.
+- Results: Raw visual Gemini-2.5 baseline was near chance around 50%; symbolic conditions averaged roughly 69-79% on FF/BD and reached mid-90s for the best models on Free-form. Randomizing support categories or action sequences reduced accuracy, showing use of structure rather than surface token matching.
+- Code Available: Not yet; paper states code to be released after acceptance.
+- Relevance: Most directly answers the hypothesis. It suggests current VLMs can reason over repeated novel geometry if given the right representation, but raw visual addressing remains a bottleneck.
+
+### Forgotten Polygons: Multimodal Large Language Models are Shape-Blind
+- Authors: Rudman et al.; Year: 2025; Source: arXiv/Findings ACL. URL: https://arxiv.org/abs/2502.15969
+- Key Contribution: Demonstrates failures in simple polygon identification and side counting.
+- Methodology: Controlled regular polygons, two-shape summation, abstract merged/irregular shapes, and visually cued CoT.
+- Datasets Used: New Shape-Blind image/CSV suite plus MathVerse visual-dominant subset.
+- Results: Many MLLMs identify common shapes but fail on less frequent polygons, especially heptagons. Text-only backbones know polygon facts, while vision encoders fail to separate shapes. VC-CoT raised GPT-4o accuracy on random-letter heptagon side-counting from 7% to 93%.
+- Code Available: Yes, https://github.com/rsinghlab/Shape-Blind
+- Relevance: Strong evidence that the issue is not just high-level reasoning; even basic geometric primitives may be poorly represented visually.
+
+### PuzzleVQA: Diagnosing Multimodal Reasoning Challenges with Abstract Visual Patterns
+- Authors: Chia et al.; Year: 2024; Source: arXiv/Findings ACL. URL: https://arxiv.org/abs/2403.13315
+- Key Contribution: Introduces 2,000 abstract visual pattern puzzles with generated captions, pattern explanations, and deductions.
+- Methodology: Multiple-choice VQA over colors, numbers, size, and shapes; progressively supplies ground-truth perception/induction/deduction to locate bottlenecks.
+- Results: GPT-4V scored 46.4% on single-concept and 45.5% on dual-concept puzzles; humans scored 91.6% on a sampled subset. Bottlenecks were visual perception and inductive reasoning.
+- Code Available: Yes, https://github.com/declare-lab/LLM-PuzzleTest
+- Relevance: Useful for testing whether repeated demonstrations help with abstract pattern addressing without explicit reasoning.
+
+### Visual Spatial Reasoning
+- Authors: Liu et al.; Year: 2022/2023; Source: arXiv/TACL. URL: https://arxiv.org/abs/2205.00363
+- Key Contribution: 10,972 validated natural image-text pairs with 66 spatial relations.
+- Methodology: Binary true/false caption verification; includes random and zero-shot object-concept splits.
+- Results: Human ceiling 95.4%; VLM baselines around 56-70% on random split and worse on zero-shot. Orientation relations remain near chance.
+- Code Available: Yes, https://github.com/cambridgeltl/visual-spatial-reasoning
+- Relevance: Good baseline for verbal addressing of spatial relations, though less focused on novel geometry.
+
+### VisuLogic
+- Authors: Xu et al.; Year: 2025; Source: arXiv. URL: https://arxiv.org/abs/2504.15279
+- Key Contribution: 1,000 visual-centric reasoning problems designed to limit language shortcuts.
+- Methodology: Four-choice visual reasoning across quantity, spatiality, position, attribute, style, and other categories.
+- Results: Most models score below 30%, near 25% random baseline and far below 51.4% human performance. CoT gives minimal gains.
+- Code Available: Yes, https://github.com/VisuLogic-Benchmark/VisuLogic-Eval
+- Relevance: Supports the view that verbal descriptions often lose critical visual structure.
+
+### Spatial-DISE
+- Authors: Huang et al.; Year: 2025/2026; Source: arXiv/ICLR. URL: https://arxiv.org/abs/2510.13394
+- Key Contribution: Defines an intrinsic/extrinsic and static/dynamic taxonomy for spatial reasoning and releases a 559-item benchmark plus 12K training set.
+- Methodology: Multiple-choice spatial tasks including 2D/3D rotation, folding, projection, shape finding, and combination.
+- Results: Average model accuracy across 32 VLMs was 28.4%, near 25% chance and far below 76.8% human baseline. Fine-tuning on Spatial-DISE-12K improved Qwen2.5-VL-7B from 26.1% to 47.0%.
+- Code/Data Available: Dataset at https://huggingface.co/datasets/TACPS-liv/Spatial-DISE
+- Relevance: Useful taxonomy and synthetic-data pipeline, but broader than the immediate 2D geometry-addressing hypothesis.
+
+## Common Methodologies
+
+- Bongard-style few-shot concept induction: positive and negative examples define a rule, then a query is classified or the rule is verbalized.
+- Prompt decomposition: direct whole-image prompting, per-panel captioning, iterative refinement, and contrastive pair comparison.
+- Symbolic grounding: convert images to action programs, structured descriptions, object attributes, or captions before reasoning.
+- Controlled synthetic generation: use programs/templates to produce large numbers of verified images and labels.
+- Bottleneck diagnosis: progressively supply perception, induction, deduction, or symbolic representations to isolate failures.
+
+## Standard Baselines
+
+- Random choice: 50% for binary Bongard/VSR, 25% for four-choice datasets.
+- Human baseline: essential because many tasks are simple for humans but difficult for models.
+- Direct VLM prompting: raw image plus task instruction, no explicit reasoning.
+- Caption-then-reason: image descriptions generated by model or oracle, then LLM solves.
+- Symbolic oracle: LOGO/action-program input for upper-bound representation tests.
+- CoT/VC-CoT: explicit reasoning traces, with or without visual annotations.
+
+## Evaluation Metrics
+
+- Accuracy for binary classification or multiple-choice tasks.
+- Rule-generation correctness, usually manually or model-ensemble judged.
+- Per-category accuracy, especially by concept type, spatial relation, or DISE quadrant.
+- Positive/negative class accuracy to detect liberal "positive" bias in Bongard tasks.
+- Robustness under perturbation: action sequence permutation, category permutation, rotation, size, color, or contrast changes.
+
+## Datasets in the Literature
+
+- Bongard-LOGO: primary dataset for repeated novel 2D geometries with action programs.
+- Bongard-RWR: real-world image translations of synthetic Bongard concepts.
+- Shape-Blind: controlled polygon/abstract-shape images and CSV task metadata.
+- PuzzleVQA: abstract visual puzzle patterns with ground-truth explanations.
+- VSR: natural-image spatial relation verification.
+- VisuLogic: visual-centric logic benchmark with images and MCQ data.
+- Spatial-DISE: spatial reasoning taxonomy, benchmark CSVs, examples, and larger image-shard dataset.
+
+## Gaps and Opportunities
+
+- Raw image VLMs are weak at extracting exact 2D geometric structure, even when the reasoning backend can use that structure.
+- Existing benchmarks often test either classification or explicit reasoning; fewer isolate "verbal addressability" under no-CoT, limited repetition, and novel geometry.
+- Repetition is underexplored as an independent variable. Bongard tasks use six positives/six negatives, but the effect of 1, 2, 3, or more repeated examples should be tested directly.
+- Symbolic oracle conditions are useful but may overstate practical performance unless paired with noisy perception-derived descriptions.
+- Prompting can help, but explicit reasoning or visual cues may change the construct being measured. The proposed experiment should separate direct answer, hidden/internal reasoning, explicit CoT, and symbolic/description-only conditions.
+
+## Recommendations for Our Experiment
+
+- Primary dataset: Bongard-LOGO, using the downloaded archive and action programs. Generate reduced-repetition variants with 1/2/3/6 positives and negatives.
+- Secondary dataset: Shape-Blind for simple polygon addressing and side-counting controls; PuzzleVQA for abstract pattern transfer.
+- Baselines: direct VLM label/rule prompt; no-CoT short answer; caption-then-answer; action-program oracle; optional explicit CoT and VC-CoT as upper-bound interventions.
+- Metrics: binary query accuracy, rule-verbalization agreement, shape/relation token accuracy, calibration by positive/negative class, and sensitivity to rotation/scale/style perturbations.
+- Main methodological control: compare raw image prompts against exact action-program prompts. If symbolic prompts succeed while raw images fail, the bottleneck is representation/addressability rather than abstract reasoning alone.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          PAPER REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+Generate a complete academic paper with the following structure:
+
+1. TITLE
+   - Clear, specific, informative
+   - Should convey main finding or contribution
+
+2. AUTHOR
+   - Use this exact author line in the \author{} block: Ari Holtzman and NeuriCo
+
+3. ABSTRACT (150-250 words)
+   - Problem statement
+   - Approach
+   - Key results
+   - Significance
+
+4. INTRODUCTION
+   - Research problem and motivation
+   - Gap in existing work
+   - Our contribution (be specific)
+   - Paper organization
+
+5. RELATED WORK
+   - Organized by theme/approach
+   - Position our work relative to prior work
+   - Cite papers from literature review
+
+6. METHODOLOGY
+   - Clear description of approach
+   - Experimental setup
+   - Datasets used
+   - Evaluation metrics
+   - Baselines
+
+7. RESULTS
+   - Present results with tables and figures
+   - Statistical analysis
+   - Comparison to baselines
+   - Ablation studies (if applicable)
+
+8. DISCUSSION
+   - Interpretation of results
+   - Limitations
+   - Broader implications
+
+9. CONCLUSION
+   - Summary of contributions
+   - Key findings
+   - Future work
+
+10. REFERENCES
+   - BibTeX format
+   - All cited papers
+
+════════════════════════════════════════════════════════════════════════════════
+                          OUTPUT FORMAT
+════════════════════════════════════════════════════════════════════════════════
+
+Create a MODULAR LaTeX project with the following directory structure:
+
+paper_draft/
+├── main.tex              # Main file that imports all sections
+├── references.bib        # BibTeX references
+├── sections/
+│   ├── abstract.tex      # Abstract content
+│   ├── introduction.tex  # Introduction section
+│   ├── related_work.tex  # Related work section
+│   ├── methodology.tex   # Methodology section
+│   ├── results.tex       # Results section
+│   ├── discussion.tex    # Discussion section
+│   └── conclusion.tex    # Conclusion section
+├── figures/              # Directory for any generated figures
+├── tables/               # Directory for complex standalone tables
+└── appendix/             # Directory for appendix sections (if needed)
+
+INSTRUCTIONS:
+1. First, create the directory structure above (mkdir -p paper_draft/sections paper_draft/figures paper_draft/tables paper_draft/appendix)
+2. Write main.tex using the EXACT preamble for NEURIPS:
+
+   \documentclass{article}
+   \usepackage[final]{neurips_2025}  % NEURIPS style (neurips_2025.sty is in paper_draft/)
+   \usepackage[hidelinks]{hyperref}  % REQUIRED: clickable links
+   \usepackage{booktabs}  % REQUIRED: professional tables
+   \usepackage{graphicx}
+   \usepackage{amsmath,amssymb}
+
+   % Import command files
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+   % Use this bibliography style:
+   \bibliographystyle{plainnat}
+
+   \author{Ari Holtzman and NeuriCo}
+
+   - Use \input{sections/...} to include each section
+   - Use \bibliography{references} for references
+3. Write each section file with COMPLETE content (no placeholders)
+4. Each section file should include its \section{} command
+5. Write references.bib with all citations in BibTeX format
+6. After writing all files, compile the paper:
+   cd paper_draft && pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
+
+This modular structure allows humans to easily:
+- Edit individual sections without navigating a large file
+- Track changes per section
+- Reuse sections across different paper versions
+
+════════════════════════════════════════════════════════════════════════════════
+                          QUALITY REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+- Academic tone throughout
+- All claims must be supported by data from the experiment report
+- Proper citations using \cite{} commands
+- Clear figures and tables with proper captions
+- NO placeholder text - every section must have real content
+- The paper MUST compile without errors
+- If compilation fails, debug and fix the LaTeX errors
+
+════════════════════════════════════════════════════════════════════════════════
+                          LAB WRITING STYLE
+════════════════════════════════════════════════════════════════════════════════
+
+Follow these lab-specific conventions to match our paper style:
+
+1. LANGUAGE STYLE:
+   - Use active voice: "We propose", "We examine", "We focus on"
+   - Be direct and confident: "Our main question is...", "We hypothesize that..."
+   - State things clearly and simply - prefer plain language over jargon
+   - Use bold questions as paragraph organizers: {\bf what is X?}
+   - Include specific quantitative claims: "8.97% over baseline"
+   - Avoid fancy wording: "utilize" → "use", "facilitate" → "help"
+
+2. INTRODUCTION STRUCTURE:
+   - Engaging hook (get to the point quickly)
+   - Problem importance
+   - Gap identification
+   - Your approach with method figure reference
+   - Quantitative preview of results
+   - Contribution bullets (3-4 items, action verbs)
+
+3. CONTRIBUTION LISTS:
+   \begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+       \item We propose...
+       \item We conduct...
+       \item We complement...
+   \end{itemize}
+
+4. MODULAR COMMANDS STRUCTURE:
+   Command templates are pre-copied to paper_draft/commands/:
+   - math.tex: Math notation macros
+   - general.tex: Formatting macros
+   - macros.tex: Project-specific term definitions (customize this for your paper)
+
+   In main.tex, include:
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+5. REFERENCE CONVENTIONS:
+   Use reference macros from math.tex:
+   - \figref{fig:name} for "figure 1" (lowercase, in-sentence)
+   - \Figref{fig:name} for "Figure 1" (capitalized, start of sentence)
+   - \secref{sec:name} for "section 2"
+
+6. TEXT FORMATTING:
+   - Use \para{Header text} for bold paragraph headers
+   - Define method/dataset names with \textsc and \xspace:
+     \newcommand{\methodname}{\textsc{MethodName}\xspace}
+
+7. TABLE FORMATTING:
+   - Use booktabs package (no vertical lines)
+   - Use \resizebox{\textwidth}{!}{...} for wide tables
+   - Use @{} to remove padding at table edges
+   - Use \cmidrule(lr){x-y} for sub-headers
+   - Use \textsc{} for dataset/method names in headers
+   - Bold best results with {\bf ...}
+
+8. FIGURE FORMATTING:
+   - Use 0.32\textwidth for 3-column subfigures
+   - Use 0.95\linewidth for full-width figures
+   - Use \input{figures/legend} for shared legends
+   - Write self-contained captions explaining key observations
+
+9. RESULTS PRESENTATION:
+   - Define \increase and \decrease for colored arrows (green up, red down)
+   - Bold best results in tables
+   - Report confidence intervals when available
+
+10. ALGORITHM STYLING:
+    - Use algpseudocode with [noend]
+    - Use \triangleright for comments
+
+11. HYPERLINKS (REQUIRED):
+    - Always use \usepackage[hidelinks]{hyperref} or with colored links
+    - All citations, section refs, figure refs, table refs must be clickable
+    - This is essential for reader navigation
+
+════════════════════════════════════════════════════════════════════════════════
+                          WORKFLOW: REVIEW AND REFLECT
+════════════════════════════════════════════════════════════════════════════════
+
+Before calling finish, you MUST complete these review steps:
+
+1. REVIEW RESOURCES (at the start):
+   - Read .codex/skills/paper-writer/SKILL.md for detailed guidance
+   - Study templates/paper_writing/lab_style_guide.md for style conventions
+   - Browse paper_examples/ for formatting and language patterns
+
+2. SELF-REFLECTION (before finishing):
+   After writing all sections, review your work against these criteria:
+
+   LANGUAGE CHECK:
+   - [ ] Is the writing clear and jargon-free?
+   - [ ] Are claims specific with quantitative support?
+   - [ ] Is active voice used throughout?
+
+   FORMATTING CHECK:
+   - [ ] Does main.tex include \input{commands/math}, \input{commands/general}, \input{commands/macros}?
+   - [ ] Is hyperref package included for clickable references?
+   - [ ] Do tables use booktabs (no vertical lines)?
+   - [ ] Are best results bolded in tables?
+   - [ ] Are figures/tables properly captioned?
+
+   STRUCTURE CHECK:
+   - [ ] Does introduction follow: hook → importance → gap → approach → preview → contributions?
+   - [ ] Are contribution bullets specific with action verbs?
+   - [ ] Does the paper compile without errors?
+
+3. FIX ISSUES:
+   - Address any issues found in the self-reflection
+   - Re-compile and verify the PDF looks correct
+
+Only after completing this review should you consider the paper finished.
